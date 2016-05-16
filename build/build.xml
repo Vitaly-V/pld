@@ -13,13 +13,21 @@
         <copy todir="${fullPath}/config"  overwrite="true">
             <fileset dir="${project.basedir}/production">
                 <include name="website.php" />
+            </fileset>
+            <filterchain>
+                <replacetokens begintoken="{{" endtoken="}}">
+                    <token key="domain" value="${domain}" />
+                </replacetokens>
+            </filterchain>
+        </copy>
+        <copy todir="${fullPath}"  overwrite="true">
+            <fileset dir="${project.basedir}/production">
                 <include name=".env" />
             </fileset>
             <filterchain>
                 <replacetokens begintoken="{{" endtoken="}}">
                     <token key="domain" value="${domain}" />
                     <token key="db.password" value="${db.password}" />
-                    <token key="email.password" value="${email.password}" />
                 </replacetokens>
             </filterchain>
         </copy>
@@ -35,6 +43,11 @@
         </copy>
     </target>
 
+    <target name="composerInstall">
+        <echo msg="Run composer install..." />
+        <exec dir="/var/www/" command="composer create-project --prefer-dist laravel/laravel ${domain}" checkreturn="true" passthru="true"/>
+    </target>
+
     <target name="makeMigrations">
         <echo msg="Copying migrations..." />
         <copy todir="${fullPath}/database/"  overwrite="true">
@@ -44,11 +57,6 @@
         </copy>
         <echo msg="Apply migrations..." />
         <exec dir="/var/www/${domain}" command="php artisan migrate" checkreturn="true" passthru="true"/>
-    </target>
-
-    <target name="composerInstall">
-        <echo msg="Run composer install..." />
-        <exec dir="/var/www/" command="composer create-project --prefer-dist laravel/laravel ${domain}" checkreturn="true" passthru="true"/>
     </target>
 
     <target name="build" depends="composerInstall, makeConfigs, makeView, makeMigrations">

@@ -2,23 +2,25 @@
 
 <project name="Example phing deploy" default="build" basedir="." description="This is an example buildfile for app.">
 
-    <property name="dirName" value="" />
-    <property name="websiteUrl" value="" />
+    <property name="domain" value="" />
+    <property name="db.password" value="" />
+    <property name="email.password" value="" />
 
-    <property name="fullPath" value="/var/www/${dirName}" />
+    <property name="fullPath" value="/var/www/${domain}" />
 
     <target name="makeConfigs">
         <echo msg="Copying website config, updating application urls..." />
         <copy todir="${fullPath}/config"  overwrite="true">
             <fileset dir="${project.basedir}/production">
                 <include name="website.php" />
-                <include name="app.php" />
+                <include name=".env" />
             </fileset>
             <filterchain>
-                <replaceregexp>
-                    <regexp pattern="'url' => ''" replace="'url' => '${websiteUrl}'" />
-                    <regexp pattern="'APP_URL', ''" replace="'APP_URL', '${websiteUrl}'" />
-                </replaceregexp>
+                <replacetokens begintoken="{{" endtoken="}}">
+                    <token key="domain" value="${domain}" />
+                    <token key="db.password" value="${db.password}" />
+                    <token key="email.password" value="${email.password}" />
+                </replacetokens>
             </filterchain>
         </copy>
     </target>
@@ -33,11 +35,22 @@
         </copy>
     </target>
 
-    <target name="composerInstall">
-        <echo msg="Run composer install..." />
-        <exec dir="/var/www/" command="composer create-project --prefer-dist laravel/laravel ${dirName}" checkreturn="true" passthru="true"/>
+    <target name="makeMigrations">
+        <echo msg="Copying migrations..." />
+        <copy todir="${fullPath}/database/"  overwrite="true">
+            <fileset dir="${project.basedir}/production">
+                <include name="migrations/**" />
+            </fileset>
+        </copy>
+        <echo msg="Apply migrations..." />
+        <exec dir="/var/www/${domain}" command="php artisan migrate" checkreturn="true" passthru="true"/>
     </target>
 
-    <target name="build" depends="composerInstall, makeConfigs, makeView">
+    <target name="composerInstall">
+        <echo msg="Run composer install..." />
+        <exec dir="/var/www/" command="composer create-project --prefer-dist laravel/laravel ${domain}" checkreturn="true" passthru="true"/>
+    </target>
+
+    <target name="build" depends="composerInstall, makeConfigs, makeView, makeMigrations">
     </target>
 </project>
